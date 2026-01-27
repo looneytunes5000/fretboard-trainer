@@ -19,14 +19,12 @@ function App() {
   const [activeStrings, setActiveStrings] = useState<Set<number> | undefined>(undefined)
   const [highScore, setHighScore] = useState(0)
 
-  // Load high score
   useEffect(() => {
     const saved = localStorage.getItem(`highscore-${mode}`)
     if (saved) setHighScore(parseInt(saved))
     else setHighScore(0)
   }, [mode])
 
-  // Save high score
   useEffect(() => {
     if (score > highScore) {
       setHighScore(score)
@@ -34,7 +32,6 @@ function App() {
     }
   }, [score, highScore, mode])
 
-  // Timer logic
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
     if (gameActive && (mode === 'survival' || mode === 'vertical') && timeLeft > 0) {
@@ -98,7 +95,6 @@ function App() {
   const pickNewTarget = () => {
     const randomNote = NOTES[Math.floor(Math.random() * NOTES.length)]
     setTargetNote(randomNote)
-    
     if (mode === 'vertical') {
       setMessage(`Find ALL "${randomNote}" notes! (0 found)`)
       setFoundNotes(new Set())
@@ -111,18 +107,13 @@ function App() {
   const handleFretClick = (stringIndex: number, fret: number) => {
     playNote(stringIndex, fret)
     setLastClicked({s: stringIndex, f: fret})
-
     const noteName = getNoteName(stringIndex, fret)
-
     if (mode === 'explore') {
       setMessage(`String ${stringIndex + 1}, Fret ${fret}: ${noteName}`)
       return
     }
-
     if (!gameActive || !targetNote) return
-
     if (noteName === targetNote) {
-      // Logic for Vertical Mode (Find All)
       if (mode === 'vertical') {
         const noteId = `${stringIndex}-${fret}`
         if (!foundNotes.has(noteId)) {
@@ -130,18 +121,15 @@ function App() {
           setFoundNotes(newFound)
           setScore(s => s + 1)
           setMessage(`Correct! Found ${newFound.size} "${targetNote}"s`)
-          
           if (newFound.size >= 2) {
-             setMessage(`Great job! Found multiple ${targetNote}s! Next note...`)
-             setTimeout(pickNewTarget, 1000)
+            setMessage(`Great job! Found multiple ${targetNote}s! Next note...`)
+            setTimeout(pickNewTarget, 1000)
           }
         } else {
           setMessage(`You already found that one! Find other "${targetNote}"s`)
         }
         return
       }
-
-      // Logic for Quiz/Survival/Beagle
       setMessage(`Correct! It was ${noteName}`)
       setScore(s => s + 1)
       if (mode === 'survival') {
@@ -158,16 +146,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 p-4 flex flex-col items-center">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Guitar className="w-10 h-10 text-emerald-400" />
         <h1 className="text-3xl font-bold text-white">FretMaster</h1>
       </div>
 
-      {/* Controls */}
       <div className="flex flex-wrap gap-4 mb-8 justify-center">
         {!audioReady && (
-          <button 
+          <button
             onClick={handleStartAudio}
             className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-full font-bold shadow-lg transition-all"
           >
@@ -198,14 +184,14 @@ function App() {
           </button>
           <button
             onClick={startVertical}
-            className={`flex items-center gap-1 px-4 py-2 rounded-full transition-all whitespace-nowrap ${mode === 'vertical' ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={`flex items-center gap-1 px-4 py-2 rounded-full transition-all whitespace-nowrap ${mode === 'vertical' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             <Target className="w-4 h-4" />
             Vertical
           </button>
           <button
             onClick={startBeagle}
-            className={`flex items-center gap-1 px-4 py-2 rounded-full transition-all whitespace-nowrap ${mode === 'beagle' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'}`}
+            className={`flex items-center gap-1 px-4 py-2 rounded-full transition-all whitespace-nowrap ${mode === 'beagle' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             <Focus className="w-4 h-4" />
             Beagle
@@ -213,19 +199,42 @@ function App() {
         </div>
       </div>
 
-      {/* Game Status */}
-      <div className="bg-slate-800 p-6 rounded-2xl shadow-xl w-full max-w-2xl mb-8 text-center border border-slate-700 relative overflow-hidden">
-        {(mode === 'survival' || mode === 'vertical') && (
-          <div className="absolute top-0 left-0 h-1 bg-red-600 transition-all duration-1000" style={{ width: `${(timeLeft / 60) * 100}%` }} />
-        )}
-        
-        <div className="text-2xl font-bold mb-2 text-indigo-300">
+      <div className="w-full max-w-4xl bg-slate-800 rounded-2xl p-6 mb-6 shadow-xl border border-slate-700">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2 text-xl font-bold text-white">
+            <Trophy className="w-6 h-6 text-yellow-400" />
+            Score: {score}
+            <span className="text-sm text-slate-400 ml-2">(Best: {highScore})</span>
+          </div>
+          {(mode === 'survival' || mode === 'vertical') && gameActive && (
+            <div className="flex items-center gap-2 text-xl font-bold text-white">
+              <Clock className="w-6 h-6 text-red-400" />
+              {timeLeft}s
+            </div>
+          )}
+        </div>
+
+        <div className={`text-center py-4 px-6 rounded-xl mb-4 text-lg font-semibold ${
+          message.includes('Correct') ? 'bg-emerald-900/50 text-emerald-300' :
+          message.includes('Wrong') ? 'bg-red-900/50 text-red-300' :
+          'bg-slate-700 text-white'
+        }`}>
           {message}
         </div>
-        
-        {mode !== 'explore' && (
-          <div className="flex items-center justify-center gap-6 text-slate-400 mt-4">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-yellow-500" />
-              <span>Score: {score}</span>
-              <span className="text-xs text-slate-600 ml-1">(Best: {h
+
+        <Fretboard
+          onFretClick={handleFretClick}
+          highlightedNote={lastClicked ? { string: lastClicked.s, fret: lastClicked.f } : null}
+          foundNotes={mode === 'vertical' ? foundNotes : undefined}
+          activeStrings={activeStrings}
+        />
+      </div>
+
+      <div className="text-slate-500 text-sm mt-4">
+        FretMaster v1.2 - Practice your fretboard daily!
+      </div>
+    </div>
+  )
+}
+
+export default App
