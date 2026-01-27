@@ -4,15 +4,19 @@ import { getNoteName, isMarkedFret } from '../utils/noteLogic';
 interface FretboardProps {
   showNotes?: boolean;
   highlightedNote?: { string: number; fret: number } | null;
+  foundNotes?: Set<string>;
   onFretClick?: (stringIndex: number, fret: number) => void;
   fretCount?: number;
+  activeStrings?: Set<number>;
 }
 
 export const Fretboard: React.FC<FretboardProps> = ({ 
   showNotes = false, 
   highlightedNote, 
+  foundNotes,
   onFretClick, 
-  fretCount = 12 
+  fretCount = 12,
+  activeStrings
 }) => {
   const strings = 6;
   
@@ -27,6 +31,8 @@ export const Fretboard: React.FC<FretboardProps> = ({
   const renderStrings = () => {
     return Array.from({ length: strings }).map((_, i) => {
       const y = paddingY + i * stringSpacing;
+      const isActive = !activeStrings || activeStrings.has(i);
+
       return (
         <line
           key={`string-${i}`}
@@ -34,9 +40,9 @@ export const Fretboard: React.FC<FretboardProps> = ({
           y1={y}
           x2={width - paddingX}
           y2={y}
-          stroke="#e2e8f0"
-          strokeWidth={i + 1} // Thicker for low strings (high index)
-          className="opacity-80"
+          stroke={isActive ? "#e2e8f0" : "#475569"} 
+          strokeWidth={i + 1}
+          className={isActive ? "opacity-80" : "opacity-30"}
         />
       );
     });
@@ -101,13 +107,18 @@ export const Fretboard: React.FC<FretboardProps> = ({
         const y = paddingY + s * stringSpacing;
         
         const isHighlighted = highlightedNote?.string === s && highlightedNote?.fret === f;
+        const isFound = foundNotes?.has(`${s}-${f}`);
+        const isActive = !activeStrings || activeStrings.has(s);
         const noteName = getNoteName(s, f);
+        
+        // Logic: Show if global flag, or highlighted (last clicked), or previously found in Find All mode
+        const isVisible = (showNotes || isHighlighted || isFound) && isActive;
 
         targets.push(
           <g 
             key={`target-${s}-${f}`} 
-            onClick={() => onFretClick && onFretClick(s, f)}
-            className="cursor-pointer hover:opacity-80"
+            onClick={() => isActive && onFretClick && onFretClick(s, f)}
+            className={`${isActive ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-20'}`}
           >
             {/* Invisible Hitbox for easier tapping */}
             <rect
@@ -118,20 +129,20 @@ export const Fretboard: React.FC<FretboardProps> = ({
               fill="transparent"
             />
             
-            {/* Note Circle (Visible if highlighted or showNotes) */}
-            {(showNotes || isHighlighted) && (
+            {/* Note Circle */}
+            {isVisible && (
               <circle
                 cx={f === 0 ? paddingX - 10 : x}
                 cy={y}
                 r={12}
-                fill={isHighlighted ? '#10b981' : '#334155'}
+                fill={isHighlighted ? '#10b981' : isFound ? '#3b82f6' : '#334155'}
                 stroke={isHighlighted ? '#ffffff' : 'none'}
                 strokeWidth={2}
               />
             )}
 
             {/* Note Text */}
-            {(showNotes || isHighlighted) && (
+            {isVisible && (
                <text
                x={f === 0 ? paddingX - 10 : x}
                y={y + 4}
