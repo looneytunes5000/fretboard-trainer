@@ -2,9 +2,23 @@ import { useState, useEffect } from 'react'
 import { Fretboard } from './components/Fretboard'
 import { getNoteName, NOTES } from './utils/noteLogic'
 import { initAudio, playNote } from './utils/audio'
-import { Guitar, Volume2, Trophy, Clock, Zap, Target, Focus } from 'lucide-react'
+import { Guitar, Volume2, Trophy, Clock, Zap, Target, Focus, Music } from 'lucide-react'
 
-type GameMode = 'explore' | 'quiz' | 'survival' | 'vertical' | 'beagle'
+type GameMode = 'explore' | 'quiz' | 'survival' | 'vertical' | 'beagle' | 'chord'
+
+// Chord definitions: root note -> chord name -> notes in chord
+const CHORDS: Record<string, Record<string, string[]>> = {
+  'C': { 'major': ['C', 'E', 'G'], 'minor': ['C', 'D#', 'G'] },
+  'D': { 'major': ['D', 'F#', 'A'], 'minor': ['D', 'F', 'A'] },
+  'E': { 'major': ['E', 'G#', 'B'], 'minor': ['E', 'G', 'B'] },
+  'F': { 'major': ['F', 'A', 'C'], 'minor': ['F', 'G#', 'C'] },
+  'G': { 'major': ['G', 'B', 'D'], 'minor': ['G', 'A#', 'D'] },
+  'A': { 'major': ['A', 'C#', 'E'], 'minor': ['A', 'C', 'E'] },
+  'B': { 'major': ['B', 'D#', 'F#'], 'minor': ['B', 'D', 'F#'] },
+}
+
+const CHORD_ROOTS = Object.keys(CHORDS)
+const CHORD_TYPES = ['major', 'minor']
 
 function App() {
   const [mode, setMode] = useState<GameMode>('explore')
@@ -18,6 +32,10 @@ function App() {
   const [foundNotes, setFoundNotes] = useState<Set<string>>(new Set())
   const [activeStrings, setActiveStrings] = useState<Set<number> | undefined>(undefined)
   const [highScore, setHighScore] = useState(0)
+  
+  // Chord mode state
+  const [currentChord, setCurrentChord] = useState<{ root: string; type: string; notes: string[] } | null>(null)
+  const [foundChordNotes, setFoundChordNotes] = useState<Set<string>>(new Set()) // which note names found (e.g., "C", "E", "G")
 
   useEffect(() => {
     const saved = localStorage.getItem(`highscore-${mode}`)
@@ -34,7 +52,7 @@ function App() {
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
-    if (gameActive && (mode === 'survival' || mode === 'vertical') && timeLeft > 0) {
+    if (gameActive && (mode === 'survival' || mode === 'vertical' || mode === 'chord') && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -92,6 +110,28 @@ function App() {
     setMessage(`Focus! Find notes ONLY on String ${randomString + 1}`)
   }
 
+  const startChord = () => {
+    setMode('chord')
+    setActiveStrings(undefined)
+    setScore(0)
+    setTimeLeft(90)
+    setGameActive(true)
+    setFoundNotes(new Set())
+    setFoundChordNotes(new Set())
+    pickNewChord()
+  }
+
+  const pickNewChord = () => {
+    const root = CHORD_ROOTS[Math.floor(Math.random() * CHORD_ROOTS.length)]
+    const type = CHORD_TYPES[Math.floor(Math.random() * CHORD_TYPES.length)]
+    const notes = CHORDS[root][type]
+    setCurrentChord({ root, type, notes })
+    setFoundChordNotes(new Set())
+    setFoundNotes(new Set())
+    setMessage(`Find ${root} ${type}: ${notes.join(', ')} (0/${notes.length})`)
+    setLastClicked(null)
+  }
+
   const pickNewTarget = () => {
     const randomNote = NOTES[Math.floor(Math.random() * NOTES.length)]
     setTargetNote(randomNote)
@@ -108,11 +148,46 @@ function App() {
     playNote(stringIndex, fret)
     setLastClicked({s: stringIndex, f: fret})
     const noteName = getNoteName(stringIndex, fret)
+    
     if (mode === 'explore') {
       setMessage(`String ${stringIndex + 1}, Fret ${fret}: ${noteName}`)
       return
     }
-    if (!gameActive || !targetNote) return
+    
+    if (!gameActive) return
+
+    // Chord mode logic
+    if (mode === 'chord' && currentChord) {
+      const noteId = `${stringIndex}-${fret}`
+      if (currentChord.notes.includes(noteName)) {
+        if (!foundChordNotes.has(noteName)) {
+          const newFoundNotes = new Set(foundChordNotes).add(noteName)
+          setFoundChordNotes(newFoundNotes)
+          const newFoundPositions = new Set(foundNotes).add(noteId)
+          setFoundNotes(newFoundPositions)
+          setScore(s => s + 1)
+          
+          if (newFoundNotes.size === currentChord.notes.length) {
+            setMessage(`Excellent! Completed ${currentChord.root} ${currentChord.type}! Next chord...`)
+            setTimeLeft(t => Math.min(t + 5, 120)) // Bonus time for completing chord
+            setTimeout(pickNewChord, 1000)
+          } else {
+            const remaining = currentChord.notes.filter(n => !newFoundNotes.has(n))
+            setMessage(`Found ${noteName}! Still need: ${remaining.join(', ')} (${newFoundNotes.size}/${currentChord.notes.length})`)
+          }
+        } else {
+          setMessage(`Already found ${noteName}! Find: ${currentChord.notes.filter(n => !foundChordNotes.has(n)).join(', ')}`)
+        }
+      } else {
+        setMessage(`${noteName} is not in ${currentChord.root} ${currentChord.type}. Find: ${currentChord.notes.filter(n => !foundChordNotes.has(n)).join(', ')}`)
+        setTimeLeft(t => Math.max(t - 2, 0)) // Penalty for wrong note
+      }
+      return
+    }
+
+    // Other modes
+    if (!targetNote) return
+    
     if (noteName === targetNote) {
       if (mode === 'vertical') {
         const noteId = `${stringIndex}-${fret}`
@@ -196,6 +271,13 @@ function App() {
             <Focus className="w-4 h-4" />
             Beagle
           </button>
+          <button
+            onClick={startChord}
+            className={`flex items-center gap-1 px-4 py-2 rounded-full transition-all whitespace-nowrap ${mode === 'chord' ? 'bg-pink-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            <Music className="w-4 h-4" />
+            Chord
+          </button>
         </div>
       </div>
 
@@ -206,7 +288,7 @@ function App() {
             Score: {score}
             <span className="text-sm text-slate-400 ml-2">(Best: {highScore})</span>
           </div>
-          {(mode === 'survival' || mode === 'vertical') && gameActive && (
+          {(mode === 'survival' || mode === 'vertical' || mode === 'chord') && gameActive && (
             <div className="flex items-center gap-2 text-xl font-bold text-white">
               <Clock className="w-6 h-6 text-red-400" />
               {timeLeft}s
@@ -215,8 +297,8 @@ function App() {
         </div>
 
         <div className={`text-center py-4 px-6 rounded-xl mb-4 text-lg font-semibold ${
-          message.includes('Correct') ? 'bg-emerald-900/50 text-emerald-300' :
-          message.includes('Wrong') ? 'bg-red-900/50 text-red-300' :
+          message.includes('Correct') || message.includes('Found') || message.includes('Excellent') ? 'bg-emerald-900/50 text-emerald-300' :
+          message.includes('Wrong') || message.includes('not in') ? 'bg-red-900/50 text-red-300' :
           'bg-slate-700 text-white'
         }`}>
           {message}
@@ -225,13 +307,13 @@ function App() {
         <Fretboard
           onFretClick={handleFretClick}
           highlightedNote={lastClicked ? { string: lastClicked.s, fret: lastClicked.f } : null}
-          foundNotes={mode === 'vertical' ? foundNotes : undefined}
+          foundNotes={(mode === 'vertical' || mode === 'chord') ? foundNotes : undefined}
           activeStrings={activeStrings}
         />
       </div>
 
       <div className="text-slate-500 text-sm mt-4">
-        FretMaster v1.2 - Practice your fretboard daily!
+        FretMaster v1.3 - Practice your fretboard daily!
       </div>
     </div>
   )
