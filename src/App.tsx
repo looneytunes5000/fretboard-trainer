@@ -249,10 +249,13 @@ function App() {
         highlightedNote={lastClicked ? {string: lastClicked.s, fret: lastClicked.f} : null}
       />
 
-      <div className="mt-8 text-slate-500 text-sm">
-        {mode === 'vertical' ? 'Find ALL instances of the note!' : 
-         mode === 'beagle' ? 'Focus only on the highlighted string!' :
-         'Tip: Survival mode adds time for correct answers!'}
+      <div className="mt-8 text-slate-500 text-sm flex flex-col items-center gap-2">
+        <p>
+          {mode === 'vertical' ? 'Find ALL instances of the note!' : 
+           mode === 'beagle' ? 'Focus only on the highlighted string!' :
+           'Tip: Survival mode adds time for correct answers!'}
+        </p>
+        <p className="text-xs opacity-50">v1.1 - Practice Mode Update</p>
       </div>
     </div>
   )
