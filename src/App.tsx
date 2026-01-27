@@ -36,7 +36,7 @@ function App() {
 
   // Timer logic
   useEffect(() => {
-    let interval: NodeJS.Timeout
+    let interval: ReturnType<typeof setInterval>
     if (gameActive && (mode === 'survival' || mode === 'vertical') && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -228,37 +228,4 @@ function App() {
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-500" />
               <span>Score: {score}</span>
-              <span className="text-xs text-slate-600 ml-1">(Best: {highScore})</span>
-            </div>
-            {(mode === 'survival' || mode === 'vertical') && (
-              <div className={`flex items-center gap-2 ${timeLeft < 10 ? 'text-red-500 animate-pulse' : ''}`}>
-                <Clock className="w-4 h-4" />
-                <span>{timeLeft}s</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* The Fretboard */}
-      <Fretboard 
-        showNotes={mode === 'explore' || lastClicked !== null} 
-        foundNotes={foundNotes}
-        onFretClick={handleFretClick}
-        activeStrings={activeStrings}
-        highlightedNote={lastClicked ? {string: lastClicked.s, fret: lastClicked.f} : null}
-      />
-
-      <div className="mt-8 text-slate-500 text-sm flex flex-col items-center gap-2">
-        <p>
-          {mode === 'vertical' ? 'Find ALL instances of the note!' : 
-           mode === 'beagle' ? 'Focus only on the highlighted string!' :
-           'Tip: Survival mode adds time for correct answers!'}
-        </p>
-        <p className="text-xs opacity-50">v1.1 - Practice Mode Update</p>
-      </div>
-    </div>
-  )
-}
-
-export default App
+              <span className="text-xs text-slate-600 ml-1">(Best: {h
