@@ -8,6 +8,7 @@ interface FretboardProps {
   onFretClick?: (stringIndex: number, fret: number) => void;
   fretCount?: number;
   activeStrings?: Set<number>;
+  activeFretRange?: { min: number; max: number };
 }
 
 export const Fretboard: React.FC<FretboardProps> = ({ 
@@ -16,7 +17,8 @@ export const Fretboard: React.FC<FretboardProps> = ({
   foundNotes,
   onFretClick, 
   fretCount = 12,
-  activeStrings
+  activeStrings,
+  activeFretRange = { min: 0, max: 12 }
 }) => {
   const strings = 6;
   
@@ -51,6 +53,9 @@ export const Fretboard: React.FC<FretboardProps> = ({
   const renderFrets = () => {
     return Array.from({ length: fretCount + 1 }).map((_, i) => {
       const x = paddingX + i * fretSpacing;
+      const isFretInRange = i >= activeFretRange.min && i <= activeFretRange.max;
+      const opacityClass = isFretInRange ? "opacity-100" : "opacity-30";
+
       return (
         <React.Fragment key={`fret-${i}`}>
           {/* Fret Bar */}
@@ -62,6 +67,7 @@ export const Fretboard: React.FC<FretboardProps> = ({
               y2={height - paddingY}
               stroke="#94a3b8"
               strokeWidth={4}
+              className={opacityClass}
             />
           )}
           {/* Fret Marker (Inlay) */}
@@ -71,7 +77,7 @@ export const Fretboard: React.FC<FretboardProps> = ({
               cy={height / 2}
               r={6}
               fill="#64748b"
-              className="opacity-50"
+              className={`opacity-50 ${opacityClass}`}
             />
           )}
           {/* Double marker for 12th fret */}
@@ -81,7 +87,7 @@ export const Fretboard: React.FC<FretboardProps> = ({
              cy={height / 2 + stringSpacing}
              r={6}
              fill="#64748b"
-             className="opacity-50"
+             className={`opacity-50 ${opacityClass}`}
            />
           )}
           {/* Fret Number */}
@@ -91,6 +97,7 @@ export const Fretboard: React.FC<FretboardProps> = ({
             fill="#94a3b8"
             fontSize="12"
             textAnchor="middle"
+            className={opacityClass}
           >
             {i === 0 ? "Open" : i}
           </text>
@@ -108,7 +115,10 @@ export const Fretboard: React.FC<FretboardProps> = ({
         
         const isHighlighted = highlightedNote?.string === s && highlightedNote?.fret === f;
         const isFound = foundNotes?.has(`${s}-${f}`);
-        const isActive = !activeStrings || activeStrings.has(s);
+        const isActiveString = !activeStrings || activeStrings.has(s);
+        const isFretInRange = f >= activeFretRange.min && f <= activeFretRange.max;
+        const isActive = isActiveString && isFretInRange;
+        
         const noteName = getNoteName(s, f);
         
         // Logic: Show if global flag, or highlighted (last clicked), or previously found in Find All mode
@@ -118,7 +128,7 @@ export const Fretboard: React.FC<FretboardProps> = ({
           <g 
             key={`target-${s}-${f}`} 
             onClick={() => isActive && onFretClick && onFretClick(s, f)}
-            className={`${isActive ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-20'}`}
+            className={`${isActive ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-10'}`}
           >
             {/* Invisible Hitbox for easier tapping */}
             <rect
